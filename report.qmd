@@ -1,0 +1,19 @@
+---
+title: "Police Use of Force by Ethnic Population"
+author: "Aman Sarosh, Brandon Lay, Gabriel Aritchita"
+format: html
+theme: cosmo
+embed-resources: true
+---
+
+## Data Sources
+
+<https://wadeps.org/home/dashboard/>
+
+<https://www.kaggle.com/datasets/mikejohnsonjr/us-counties-diversity-index>
+
+```{r}
+source (R/load_data.R)
+glimpse(wadeps_df)
+glimpse(diversity_df)
+```

@@ -1,2 +1,7 @@
 /.quarto/
+/Project_files/
 **/*.quarto_ipynb
+.Rproj.user
+.Rhistory
+site_libs/
+report.html
