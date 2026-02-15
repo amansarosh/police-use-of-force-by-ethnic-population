@@ -1,0 +1,179 @@
+---
+title: "Police Use of Force by Ethnic Population"
+author: "Aman Sarosh, Brandon Lay, Gabriel Aritchita"
+format: html
+theme: cosmo
+embed-resources: true
+---
+
+## Data Sources
+
+<https://wadeps.org/home/dashboard/>
+
+<https://www.kaggle.com/datasets/mikejohnsonjr/us-counties-diversity-index>
+
+```{r}
+#| message: false
+#| warning: false
+library(readr)
+library(dplyr)
+library(stringr)
+
+source("R/load_data.R")
+```
+
+# Part I: Find the Data
+
+## First Dataset - WADEPS Police Use of Force
+
+### Data Source
+
+The first dataset comes from WADEPS, the Washington State Data Exchange for Public Safety. WADEPS is run by Washington State University under a grant from the Attorney General's Office. State law from 2021 requires all police agencies in Washington to report use of force incidents monthly.
+
+This is reliable because it's legally mandated and managed by university researchers with government oversight. The database launched in June 2025 and you can verify it through news coverage and the agencies are real Washington police departments.
+
+### What It Represents
+
+This data shows police use of force incidents across Washington State. Each row is a police agency showing how many calls for service they got and how many times they used force like tasers, pepper spray, or physical strikes.
+
+This connects to demographics because we want to see if counties with different racial compositions have different patterns of police force.
+
+### Join Plan
+
+We'll join on county name. Both datasets should have county names but we might need to clean them up to make sure they match exactly.
+
+### Data Overview
+
+```{r}
+glimpse(wadeps_df)
+
+head(wadeps_df, 8)
+```
+
+The dataset has 86 rows for different agencies and 5 columns: Agency, Agency Type, County, Calls for Service, and Uses of Force.
+
+### Data Issues
+
+```{r}
+cat("Missing values:\n")
+colSums(is.na(wadeps_df))
+
+weird <- wadeps_df %>%
+  filter(`Uses of Force` > `Calls for Service`)
+cat("\nCases where force exceeds calls:", nrow(weird), "\n")
+
+cat("Unique counties:", n_distinct(wadeps_df$County), "out of 39 in Washington\n")
+```
+
+No missing values but 2 agencies have more force incidents than total calls which doesn't make sense. Only 25 of 39 counties are represented so some smaller agencies aren't reporting yet. The source is still solid just need to filter those 2 bad rows.
+
+## Second Dataset - County Diversity Index
+
+### Data Source
+
+The second dataset comes from a US Counties Diversity Index compilation posted on Kaggle. The original data is from the US Census Bureau which conducts population counts every 10 years as required by the Constitution.
+
+This compilation includes demographic breakdowns and diversity scores for counties. The Census Bureau data is reliable because it's the official government population count with strict quality control that everyone uses for population statistics.
+
+### What It Represents
+
+This data has demographic information for US counties including population breakdowns by race and ethnicity. It includes diversity index scores that measure how racially and ethnically diverse each county is.
+
+This lets us compare police force rates with racial composition and diversity to see if more diverse counties or counties with higher minority populations have different policing patterns.
+
+### Join Plan
+
+We'll join on county name. Need to make sure the county names match between the two datasets and filter to just Washington counties.
+
+### Data Overview
+
+```{r}
+glimpse(diversity_df)
+
+head(diversity_df, 8)
+```
+
+The diversity dataset includes columns for different racial and ethnic groups as percentages, a diversity index score, and county identifiers.
+
+### Data Issues
+
+```{r}
+cat("Missing values:\n")
+colSums(is.na(diversity_df))
+
+cat("\nChecking for Washington counties in diversity data\n")
+```
+
+We'll check for any missing values and make sure Washington counties are represented in the data.
+
+# Part II: Data Join
+
+Before joining we need to aggregate police data by county since there are multiple agencies per county. We also need to filter the diversity data to just Washington and make sure county names match.
+
+```{r}
+wadeps_by_county <- wadeps_df %>%
+  group_by(County) %>%
+  summarize(
+    total_calls = sum(`Calls for Service`),
+    total_force = sum(`Uses of Force`),
+    num_agencies = n()
+  ) %>%
+  mutate(force_rate = (total_force / total_calls) * 100)
+
+diversity_clean <- diversity_df %>%
+  filter(grepl("Washington|WA", State, ignore.case = TRUE) | 
+         County %in% wadeps_by_county$County)
+
+joined_data <- diversity_clean %>%
+  inner_join(wadeps_by_county, by = "County")
+```
+
+Changes made before joining:
+
+-   Summed calls and force incidents by county since some counties have multiple agencies
+-   Filtered diversity data to Washington counties
+-   Inner join to keep only counties with both datasets
+
+```{r}
+glimpse(joined_data)
+
+cat("\nJoined dataset has", nrow(joined_data), "counties\n\n")
+
+head(joined_data, 8)
+```
+
+# Part III: Data Documentation
+
+## Variable Descriptions
+
+WADEPS variables:
+
+-   total_calls: total calls for service across all agencies in county
+-   total_force: total use of force incidents in county
+-   num_agencies: number of agencies reporting
+-   force_rate: percent of calls involving force
+
+Diversity dataset variables vary but typically include:
+
+-   County: county name
+-   Diversity index or entropy scores
+-   Race and ethnicity percentages for different groups
+-   Population counts
+
+Documentation available at wadeps.org for police data and the original census data sources.
+
+## Most Relevant Variables
+
+The key variables for analysis are force_rate which is our outcome, the diversity index to compare diverse vs homogeneous counties, race percentage variables to look at composition, and population if available to control for size.
+
+## Potential Biases and Human Rights Principles
+
+The biggest limitation is we don't have race data for individuals experiencing force, only overall county demographics. So we can't measure if force is applied disproportionately to certain races within a county. A diverse county could have force concentrated in minority areas but county level data wouldn't show it.
+
+We're also missing socioeconomic data like poverty and employment which relate to both demographics and policing. There may also be time differences between when the diversity data and police data were collected.
+
+Looking at human rights principles, the data handles privacy well since no personal identifiers, transparency since it's public, and accountability since it enables oversight. But it's limited for fairness and non-discrimination because we can't measure individual treatment by race. We also can't assess safety since we don't know if force was justified. Human control is maintained since it's not automated and there's professional responsibility with academic management.
+
+Key limitations are no individual race data, no economic variables, possible time gaps between datasets, county aggregation hides local patterns, 14 counties missing police data, and no context on whether force was appropriate.
+
+These limits mean we can identify county level patterns but can't prove discrimination at the individual level. That would need different data.
