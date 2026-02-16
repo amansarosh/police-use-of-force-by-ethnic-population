@@ -1,0 +1,273 @@
+---
+title: "Police Use of Force by Ethnic Population"
+author: "Aman Sarosh, Brandon Lay, Gabriel Aritchita"
+format: html
+theme: cosmo
+embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+## Data Sources
+
+<https://wadeps.org/home/dashboard/>
+
+<https://s4.ad.brown.edu/projects/diversity/Data/Download4.htm>
+
+```{r}
+#| message: false
+#| warning: false
+library(readr)
+library(dplyr)
+library(stringr)
+
+source("R/load_data.R")
+```
+
+# Part I: Find the Data
+
+## First Dataset - WADEPS Police Use of Force
+
+### Data Source
+
+The first dataset comes from WADEPS, the Washington State Data Exchange
+for Public Safety. WADEPS is run by Washington State University under a
+grant from the Attorney General's Office. State law from 2021 requires
+all police agencies in Washington to report use of force incidents
+monthly.
+
+This is reliable because it's legally mandated and managed by university
+researchers with government oversight. The database launched in June
+2025 and you can verify it through news coverage and the agencies are
+real Washington police departments.
+
+### What It Represents
+
+This data shows police use of force incidents across Washington State.
+Each row is a police agency showing how many calls for service they got
+and within that department how many repoted use of force cases are tied
+with it.
+
+This connects to demographics because we want to see if counties with
+different racial compositions have different patterns of police force.
+
+### Join Plan
+
+We'll join on county name. Both datasets should have county names but we
+might need to clean them up to make sure they match exactly.
+
+### Data Overview
+
+```{r}
+glimpse(wadeps_df)
+
+head(wadeps_df, 8)
+```
+
+The dataset has 86 rows for different agencies and 5 columns: Agency,
+Agency Type, County, Calls for Service, and Uses of Force.
+
+### Data Issues
+
+Looking at the dataset as a whole, there are no missing values and 25 of
+39 counties are represented so the dataset purely encompasses counties
+that have reported documents of their calls for service and use of
+force. This shortness of counties could be rooted in the more rural
+counties that may not have a dedicated police department attactched to
+the lcoation.
+
+## Second Dataset - County Diversity Index
+
+### Data Source
+
+The source is called Diversity and Disparities, it's a project within
+Brown University that provides research that examines as their title
+suggests the diversity and disparties within American society. All of
+their research is independent as well as peer reviewed in collaboration
+with census data. They themselves sort and collect the data alongside
+census and I believe its reiable due to it being presented with the
+connection of the prestigious college Brown University.
+
+### What It Represents
+
+The data represents how racially diverse each U.S county is from 1980 -
+2010 using an entropy scope. This information is relevant to the first
+dataset because it provides demographic context for counties where
+police use of force incidents occured. By linking and comparing the two,
+you can analyze whether a specific county's level of racial diversity is
+related to how often force is used.
+
+### Join Plan
+
+We'll join on county name. Need to make sure the county names match
+between the two datasets and filter to just Washington counties.
+
+### Data Overview
+
+```{r}
+glimpse(diversity_df)
+
+head(diversity_df, 8)
+```
+
+The dataset has 64 columns including county identifiers, metro area
+information, and census data that encompass population count racial
+percentage and an entropy scope. Theres 3143 rows encompassing every
+county within the U.S. An example of the data would be, Autauga County,
+Alabama had a 2010 population of 54,571 with a ratio of 77% white and
+17.6% black, and its entropy scope increasing from 38.7 in 1980 to 44.2
+in 2010.
+
+### Data Issues
+
+Some blank/missing data sets as well as a few N/As here and there, too
+many to count but from the looks of it they look scattered and would
+require some forms of clenaing before fully implementing it into a join
+function between our two datasets.
+
+# Part II: Data Join
+
+```{r}
+library(dplyr)
+library(tidyverse)
+
+diversityindex_df <- read.csv("~/Downloads/Counties.csv" , skip = 1)
+rate_of_force_data_df <- read.csv("~/Downloads/Rate_of_Force_Data_R_1771113615253.csv")
+
+diversityindex_df <- diversityindex_df |>
+  filter(State.Name == "WA") |>
+  mutate(County = str_remove(County_Name, " County"))
+
+rate_of_force_data_df <- rate_of_force_data_df |>
+  group_by(County) |>
+  summarise(Calls_Service = sum(Calls.for.Service),
+            Use_Force = sum(Uses.of.Force))
+                                  
+force_by_diversity_df <- diversityindex_df |>
+  left_join(rate_of_force_data_df, by = "County")
+
+force_by_diversity_df <- force_by_diversity_df |>
+  select(County, TotPop10, PWhite10, PBlack10, PHisp10, PAPI10, POther10, E10, Calls_Service, Use_Force) |>
+  mutate(Force_Per_100k = (Use_Force / TotPop10) * 100000) |>
+  drop_na()
+
+write.csv(force_by_diversity_df, "force_by_diversity_df.csv", row.names = FALSE)
+                            
+```
+
+Changes made before joining: - Defined the two datasets with their
+respective names - Started by filtering to only counties within the
+state of washington - Found that diversityindex_df utilizes county at
+the end of their name so it had to be removed (ex Kings County -\>
+Kings) - There are multiple agencies within the same county depending on
+its size so they had to be combined to fully encompass the county -
+Changed the names of calls for service and use of force to just
+Calls_Service and Use_Force - Then defined a new combined dataset with
+its respective name and did a left join by the dataset's counties -
+Selected only the columns we are going to be using to draw our
+comparisons such as race, population, diversity index, calls of service,
+and reported use of force - Counties who contain a larger population
+will obviously have a larger amount of calls and force so we creaetd a
+new colum that tells how many uses of force occurred for every 100,000
+people living in that county.
+
+```{r}
+glimpse(force_by_diversity_df)
+```
+
+Utilizing glimpse we can see that our data has 11 columns those being
+County, Total Population, White Population, Black Population, Hispanic
+Population, Asian and Pacific Islander Population, Ethnic Diversity
+Index Value, Calls of Service, Use of Force, and finally Force Per
+100,000 population. For the rows we have a total of 25 rows.
+
+# Part III: Data Documentation
+
+## Variable Descriptions
+
+CODEBOOK Links
+<https://s4.ad.brown.edu/projects/diversity/DiversityPages2/Default.aspx>
+
+<https://wadeps.org/home/dashboard/> Note: WADEPS doesn't offer a direct
+code book but rather the closest thing is their dashboard that utilizes
+the dataset which contains a brief description of what the specific
+dataset contains.
+
+## Most Relevant Variables
+
+The most relevant variables are Force_Per_100k and Use_Force as they
+directly measure our research question. Calls_Service provides context
+by distinguishing counties with genuinely high force rates from those
+with simply more police activity. In regards to the demographics,
+PWhite10, PBlack10, PHisp10, PAPI10, and POther10 are very essential for
+analyzing whether counties with higher minority populations experience
+disproportionate force. E10 is particularly useful as a single diversity
+score for each county. TotPop10 ensures our comparisons are population
+adjusted rather than skewed by county size. The most meaningful analysis
+will come from plotting Force_Per_100k against each racial percentage
+variable to identify whether any ethnic demographic correlates with
+higher use of force across Washington counties.
+
+## Potential Biases and Human Rights Principles
+
+Our dataset contains clear biases that need to be acknowledged. First,
+the force data only includes agencies that chose to report, which means
+departments with more serious issues may be missing. That weakens
+accountability and transparency. The PAPI10 category groups multiple
+Asian and Pacific Islanders identities as a group, which hurts fairness
+and non-discrimination because it hides important differences. We are
+also missing key variables like officer demographics and the economic
+factors; it limits transparency and explainability when analying
+disparities. Using 2010 Census also raises concerns since county
+populations have changed over time. While county level aggregation helps
+protect privacy, it reduces detail and masks within county variation.
+The dataset also lacks direct community perspectives, which weakens
+human control of technology and the promotion of human values.
+Personally I believe that as researchers our group has a responsibility
+to clearly state these limitations and avoid overstating conclusions
+about system policing disparities.
+
+# Part IV: Combined Data Wrangling
+
+## 3 Forms of Cleaning
+
+Note: A lot of this will be a restatement of the previous statement as
+both address similar things
+
+```{r}
+diversityindex_df <- diversityindex_df |>
+  filter(State.Name == "WA") |>
+  mutate(County = str_remove(County_Name, " County"))
+
+rate_of_force_data_df <- rate_of_force_data_df |>
+  group_by(County) |>
+  summarise(Calls_Service = sum(Calls.for.Service),
+            Use_Force = sum(Uses.of.Force))
+
+force_by_diversity_df <- force_by_diversity_df |>
+  select(County, TotPop10, PWhite10, PBlack10, PHisp10, PAPI10, POther10, E10, Calls_Service, Use_Force) |>
+  mutate(Force_Per_100k = (Use_Force / TotPop10) * 100000) |>
+  drop_na()
+
+```
+
+## Explanation For Cleaning
+
+The first section mainly addresses removing the state names that arent
+Washington as well as making a new column called County that contains
+the original county names without the county part to them. We did this
+to assist in making sure that the join function works
+
+The second section addresses how multiple counties can contain multipl
+agencies. Depending on the size a county may have 1-4 agencies within it
+so to help solve that we goruped the counties so the multiple King
+Counties become just one King County and that applies to their calls of
+service and their use of force.
+
+The third section helps finalize the combined dataset by selecting only
+columns that we require and are applicable to the question we are
+addressing. Alongside this is a new column created to encompass the rate
+at which force is used per 100,000 people in a population. This helps
+remove the potentional factors that may contribute to a higher use of
+force rate like a higher population count.
