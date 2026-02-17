@@ -1,19 +1,457 @@
 ---
-title: "Police Use of Force by Ethnic Population"
+title: "Police Use of Force and County Diversity in Washington State"
 author: "Aman Sarosh, Brandon Lay, Gabriel Aritchita"
-format: html
-theme: cosmo
-embed-resources: true
+format: 
+  html:
+    theme: cosmo
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+editor: 
+  markdown: 
+    wrap: 72
 ---
 
-## Data Sources
-
-<https://wadeps.org/home/dashboard/>
-
-<https://www.kaggle.com/datasets/mikejohnsonjr/us-counties-diversity-index>
-
 ```{r}
-source (R/load_data.R)
-glimpse(wadeps_df)
-glimpse(diversity_df)
+#| message: false
+#| warning: false
+#| echo: false
+library(readr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(knitr)
+library(tidyr)
 ```
+
+# Section I: First Dataset - WADEPS Police Use of Force
+
+## Data Source
+
+The first dataset comes from **WADEPS** (Washington State Data Exchange
+for Public Safety), which is run by Washington State University under a
+grant from the Washington State Attorney General's Office. State law
+enacted in 2021 requires all police agencies in
+Washington to report use of force incidents monthly to this centralized
+database.
+
+This source is highly reliable because:
+
+- It is legally mandated reporting with oversight from the Attorney General
+- Data is collected and managed by university researchers with government accountability
+- The database launched in June 2022 and can be verified through FOIA requests, news coverage, and direct agency reporting
+
+**Source Link:** <https://wadeps.org/home/dashboard/>
+
+## What It Represents
+
+This dataset documents police use of force incidents across Washington
+State at the agency level. Each row represents a police agency (city
+police departments, county sheriffs, etc.) and includes:
+
+- Total calls for service received by that agency
+- Total reported uses of force by that agency
+
+This data is directly relevant to our research question: **Do counties
+with different racial and ethnic compositions show different patterns in
+police use of force?** By linking this use of force data with
+demographic information, we can investigate potential correlations
+between community diversity and police force incidents.
+
+
+## Data Overview
+
+```{r load-force-data}
+#| echo: true
+rate_of_force_data_df <- read.csv("data_clean/Rate_of_Force_Data_R_1771113615253.csv")
+glimpse(rate_of_force_data_df)
+```
+
+**Key Characteristics:**
+
+- **87 rows** representing different law enforcement agencies
+- **5 columns**: Agency, Agency Type, County, Calls for Service, Uses of Force
+- Coverage: 25 out of 39 Washington counties
+
+
+## Join Plan
+
+We will join this dataset with our diversity data using **County** as
+the key variable. Some data preparation will be needed:
+
+- County names must match exactly between datasets
+- Multiple agencies within the same county need to be aggregated
+- Remove " County" suffix from diversity dataset county names
+
+## Data Issues
+
+**Missing Coverage:** Only 25 of Washington's 39 counties are
+represented. This limitation likely stems from rural counties lacking
+dedicated police departments or having incomplete reporting compliance.
+
+**No Missing Values:** Within the reported data, all values are present
+and complete.
+
+**Implication:** Our analysis will only cover counties with active law
+enforcement agencies that reported to WADEPS, potentially excluding more
+rural areas with different policing dynamics.
+
+# Section II: Second Dataset - County Diversity Index
+
+
+## Data Source
+
+The second dataset comes from the **Diversity and Disparities Project**
+at Brown University, a research initiative examining
+racial diversity and disparities across American communities. This
+project collaborates directly with U.S. Census data to provide
+peer-reviewed demographic analysis.
+
+This source is reliable because:
+
+- Academic research from Brown University with rigorous standards
+- Based on official U.S. Census Bureau data
+- Peer-reviewed and widely cited in demographic research
+
+**Source Link:**
+<https://s4.ad.brown.edu/projects/diversity/Data/Download4.htm>
+
+## What It Represents
+
+This dataset measures racial and ethnic diversity for every U.S. county
+from 1980-2010.
+
+For each county, the data includes:
+
+- Total population counts by census year
+- Racial/ethnic composition percentages (White, Black, Hispanic, Asian/Pacific Islander, Other)
+
+**Relevance to Research:** This demographic context is required for
+understanding whether police use of force correlates with community
+diversity levels or specific racial compositions.
+
+
+## Data Overview
+
+```{r load-diversity-data}
+#| echo: true
+diversityindex_df <- read.csv("data_clean/Counties.csv", skip = 1)
+glimpse(diversityindex_df)
+```
+
+**Key Characteristics:**
+
+- **3,143 rows** (all U.S. counties)
+- **64 columns** including population, racial percentages, entropy scores
+- Census years: 1980, 1990, 2000, 2010
+- We will filter to Washington State only (39 counties)
+
+
+## Join Plan
+
+Join on **County Name** after:
+
+- Filtering to only Washington State counties (`State.Name == "WA"`)
+- Removing " County" suffix to match format in WADEPS data
+- Using 2010 census data (most recent in this dataset)
+
+## Data Issues
+
+**Missing Values:** The dataset contains scattered missing values and
+NAs, particularly in smaller counties or specific demographic categories.
+These will be handled through filtering during the join process.
+
+**Census Timing:** Using 2010 Census data with 2022-2025 police data
+introduces a temporal mismatch. County demographics have changed over
+12-15 years, which may affect analysis accuracy.
+
+**Geographic Aggregation:** County-level data masks within-county
+variation, particularly in large counties like King County (Seattle area)
+where diversity varies significantly by neighborhood.
+
+# Section III: Joining the Data
+
+## Data Join Process
+
+```{r data-join}
+#| echo: true
+#| message: false
+#| warning: false
+
+# Prepare diversity data - filter to WA and clean county names
+diversityindex_df <- diversityindex_df |>
+  filter(State.Name == "WA") |>
+  mutate(County = str_remove(County_Name, " County"))
+
+# Aggregate force data by county (multiple agencies per county)
+rate_of_force_data_df <- rate_of_force_data_df |>
+  group_by(County) |>
+  summarise(
+    Calls_Service = sum(Calls.for.Service, na.rm = TRUE),
+    Use_Force = sum(Uses.of.Force, na.rm = TRUE)
+  )
+
+# Join datasets
+force_by_diversity_df <- diversityindex_df |>
+  left_join(rate_of_force_data_df, by = "County")
+
+# Select relevant columns
+force_by_diversity_df <- force_by_diversity_df |>
+  select(County, TotPop10, PWhite10, PBlack10, PHisp10, PAPI10, 
+         POther10, E10, Calls_Service, Use_Force) |>
+  mutate(Force_Per_100k = (Use_Force / TotPop10) * 100000) |>
+  drop_na()
+
+# Display joined data
+glimpse(force_by_diversity_df)
+```
+
+### Join Methodology
+
+**Changes Made:**
+
+1. **Filtered** diversity data to Washington State only
+2. **Removed** " County" suffix from county names in diversity data
+3. **Aggregated** multiple agencies per county (e.g., King County has
+   Seattle PD, Bellevue PD, etc.)
+4. **Joined** using left join on County name
+5. **Selected** only relevant demographic and force variables
+6. **Created** normalized metric: Force_Per_100k (accounts for
+   population differences)
+7. **Removed** rows with missing data using `drop_na()`
+
+### Final Dataset Structure
+
+```{r show-final-structure}
+#| echo: false
+kable(head(force_by_diversity_df, 5), 
+      caption = "First 5 rows of joined dataset",
+      digits = 2)
+```
+
+**Final Variables:**
+
+- `County`: County name
+- `TotPop10`: Total 2010 population
+- `PWhite10`: % White population
+- `PBlack10`: % Black population
+- `PHisp10`: % Hispanic population
+- `PAPI10`: % Asian/Pacific Islander
+- `POther10`: % Other races
+- `E10`: Entropy diversity index
+- `Calls_Service`: Total calls for service
+- `Use_Force`: Total uses of force
+- `Force_Per_100k`: Uses of force per 100,000 residents
+
+
+## Data Documentation
+
+### Codebook Links
+
+- **Diversity Data:**
+  <https://s4.ad.brown.edu/projects/diversity/DiversityPages2/Default.aspx>
+- **WADEPS Data:** <https://wadeps.org/home/dashboard/> (WADEPS
+  provides a dashboard along with CSV)
+
+### Most Relevant Variables
+
+**Primary Outcome Variables:**
+
+- `Force_Per_100k`: Normalized rate of force usage, our main dependent
+  variable
+- `Use_Force`: Raw count of force incidents
+
+**Key Explanatory Variables:**
+
+- `E10`: Entropy diversity index - provides a single comprehensive
+  diversity score
+- `PWhite10`, `PBlack10`, `PHisp10`, `PAPI10`, `POther10`: Racial
+  composition percentages for granular analysis
+
+**Control Variables:**
+
+- `TotPop10`: Population size for context
+- `Calls_Service`: Police activity level (distinguishes high force rates
+  from high activity)
+
+The most meaningful analyses will examine relationships between
+`Force_Per_100k` and both the overall diversity measure (`E10`) and
+individual racial composition variables to identify potential disparities.
+
+### Potential Biases and Human Rights Principles
+
+Our dataset contains several important limitations:
+
+**Accountability & Transparency:** The force data only includes agencies
+that reported to WADEPS. Departments with compliance issues or serious
+problems may be systematically excluded, weakening accountability. This
+represents only 25 of 39 counties.
+
+**Fairness & Non-Discrimination:** The PAPI10 variable aggregates all
+Asian and Pacific Islander identities into one category, masking
+important differences between diverse communities (e.g., East Asian,
+Southeast Asian, Pacific Islander populations have distinct experiences).
+This aggregation undermines equitable analysis.
+
+**Transparency & Explainability:** We lack crucial variables including
+officer demographics, socioeconomic factors (poverty, education,
+employment), crime rates, and police department policies. These omissions
+limit our ability to explain observed disparities.
+
+**Safety & Security:** Using 2010 Census data with 2022-2025 police data
+creates a temporal mismatch. Population demographics have shifted
+significantly over 12-15 years, particularly in rapidly growing counties
+like Clark and Snohomish.
+
+**Privacy:** County-level aggregation protects individual privacy but
+reduces analytical precision. Within-county variation is masked,
+particularly problematic in large, diverse counties like King County.
+
+**Human Control & Values:** The dataset lacks community perspectives,
+civilian oversight data, or input from affected populations. This
+top-down approach to data collection weakens community voice in
+understanding police-community relations.
+
+**Professional Responsibility:** As researchers, we have a responsibility
+to clearly communicate these limitations and avoid overstating
+conclusions about systemic policing disparities. Our analysis can
+identify correlations but cannot establish causation or provide complete
+explanations for observed patterns.
+
+# Section IV: Data Wrangling
+
+In this section, we perform three data cleaning and exploration actions on our combined dataset to prepare it for analysis.
+
+## Action 1: Filter to Washington State and Clean County Names
+
+We filtered the diversity dataset to only include Washington counties and removed the " County" suffix from county names to enable proper joining.
+```{r action-1-filter-clean}
+#| echo: true
+#| eval: false
+
+# This was done in the join section
+diversityindex_df <- diversityindex_df |>
+  filter(State.Name == "WA") |>
+  mutate(County = str_remove(County_Name, " County"))
+```
+
+**Rationale:** The diversity dataset contains all U.S. counties, but we only need Washington State data. Removing " County" from names ensures the county identifiers match between our two datasets for successful joining.
+
+## Action 2: Aggregate Multiple Agencies per County
+
+Since multiple law enforcement agencies can operate within the same county, we grouped and summarized the force data by county to get total counts.
+```{r action-2-aggregate}
+#| echo: true
+#| eval: false
+
+# This was done in the join section
+rate_of_force_data_df <- rate_of_force_data_df |>
+  group_by(County) |>
+  summarise(
+    Calls_Service = sum(Calls.for.Service, na.rm = TRUE),
+    Use_Force = sum(Uses.of.Force, na.rm = TRUE)
+  )
+```
+
+**Rationale:** Depending on county size, there may be 1-4 agencies within it (e.g., King County has Seattle PD, Bellevue PD, sheriff's office, etc.). We combined these to get county-level totals that can be compared with county-level demographics.
+
+## Action 3: Create Normalized Force Rate Variable
+
+We created a new column that calculates the rate of force incidents per 100,000 residents to account for population differences between counties.
+```{r action-3-normalize}
+#| echo: true
+#| eval: false
+
+# This was done in the join section
+force_by_diversity_df <- force_by_diversity_df |>
+  mutate(Force_Per_100k = (Use_Force / TotPop10) * 100000) |>
+  drop_na()
+```
+
+**Rationale:** Counties with larger populations will naturally have more calls for service and uses of force. Creating a normalized rate (per 100,000 people) allows fair comparison between counties of different sizes. We also removed any rows with missing data to ensure data quality.
+
+## Summary of Cleaned Dataset
+```{r final-summary}
+#| echo: true
+
+# Show structure of final dataset
+glimpse(force_by_diversity_df)
+
+# Show summary statistics
+summary(force_by_diversity_df$Force_Per_100k)
+```
+
+Our final cleaned dataset contains **25 counties** with complete data on demographics and police use of force. The Force_Per_100k variable will be our primary metric for comparing force rates across counties with different diversity levels.
+
+# Section V: Group Information
+
+## Project Overview
+
+**Topic:** Police Use of Force and County Demographics in Washington State
+
+**Lab Section:** INFO 201 B
+
+**Teaching Assistant:** Yashita Tanwar
+
+**Research Question:** This project investigates whether patterns in
+police use of force correlate with racial and ethnic diversity across
+Washington State counties. We examine both overall diversity and specific demographic compositions to understand
+potential disparities in law enforcement practices.
+
+## Team Members
+
+### Aman Sarosh
+
+**Affiliation:** The Information School, University of Washington - Seattle
+
+**Email:** asarosh@uw.edu
+
+**Project Interest:** I am interested in examining how demographic
+factors influence public safety outcomes and whether data can reveal
+systemic patterns in law enforcement that warrant policy attention.
+
+**Informatics Background:** One of my interest in Informatics centers on using
+data analysis to address questions and inform evidence-based
+policy decisions that promote equity.
+
+"Study, Design, and Develop information technology for the good of people, organizations, and society."
+
+### Brandon Lay
+
+**Affiliation:** The Information School, University of Washington - Seattle
+
+**Email:** bndonlay@uw.edu
+
+**Project Interest:** I am interested in understanding the intersection
+of community diversity and policing practices, particularly how data
+transparency can support accountability in law enforcement.
+
+**Informatics Background:** I am drawn to informatics because of its
+potential to make complex social issues more visible and actionable
+through careful data analysis and visualization.
+
+### Gabriel Aritchita
+
+**Affiliation:** The Information School, University of Washington - Seattle
+
+**Email:** gabe1124@uw.edu
+
+**Project Interest:** I am interested in exploring whether and how
+racial composition of communities affects their interactions with law
+enforcement, with the goal of identifying areas for reform.
+
+**Informatics Background:** I am passionate about using data science
+to investigate questions of fairness and equity.
+
+## Coding Notes
+
+### Tools and Resources Used
+
+- **R and RStudio:** Core programming environment
+- **dplyr package:** Data manipulation and joining
+- **ggplot2 package:** Data visualization
+- **tidyverse package:** Data science tools
+- **Quarto:** Report generation and reproducible research
+- **readr package:** Data import functions 
+- **stringr package:** String manipulation for cleaning county names
+- **knitr package:** Creating tables in reports
