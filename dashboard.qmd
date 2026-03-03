@@ -1,0 +1,132 @@
+---
+title: "Police Use of Force and County Diversity in Washington State"
+author: "Aman Sarosh, Brandon Lay, Gabriel Aritchita"
+format:
+  dashboard:
+    theme: cosmo
+    embed-resources: true
+---
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: false
+library(readr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(knitr)
+library(tidyr)
+
+# Load data
+diversityindex_df <- read.csv("data_clean/Counties.csv", skip = 1)
+rate_of_force_data_df <- read.csv("data_clean/Rate_of_Force_Data_R_1771113615253.csv")
+
+# Diversity data
+diversityindex_df <- diversityindex_df |>
+  filter(State.Name == "WA") |>
+  mutate(County = str_remove(County_Name, " County"))
+
+# Aggregate force data by county
+rate_of_force_data_df <- rate_of_force_data_df |>
+  group_by(County) |>
+  summarise(
+    Calls_Service = sum(Calls.for.Service, na.rm = TRUE),
+    Use_Force = sum(Uses.of.Force, na.rm = TRUE)
+  )
+
+# Join datasets
+force_by_diversity_df <- diversityindex_df |>
+  left_join(rate_of_force_data_df, by = "County") |>
+  select(County, TotPop10, PWhite10, PBlack10, PHisp10, PAPI10,
+         POther10, E10, Calls_Service, Use_Force) |>
+  mutate(Force_Per_100k = (Use_Force / TotPop10) * 100000) |>
+  drop_na()
+```
+
+# Overview
+
+## Row {height="25%"}
+
+```{r}
+#| content: valuebox
+#| title: "Counties Analyzed"
+list(
+  icon = "map",
+  color = "primary",
+  value = nrow(force_by_diversity_df)
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total Use of Force Incidents"
+list(
+  icon = "shield-exclamation",
+  color = "warning",
+  value = scales::comma(sum(force_by_diversity_df$Use_Force))
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Avg Force per 100k Residents"
+list(
+  icon = "person",
+  color = "danger",
+  value = round(mean(force_by_diversity_df$Force_Per_100k), 1)
+)
+```
+
+## Row {height="75%"}
+
+```{r}
+#| title: "Use of Force per 100k Residents by County"
+force_by_diversity_df |>
+  arrange(desc(Force_Per_100k)) |>
+  ggplot(aes(x = reorder(County, Force_Per_100k), y = Force_Per_100k, fill = Force_Per_100k)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_gradient(low = "#7fbfff", high = "#c0392b") +
+  coord_flip() +
+  labs(
+    x = "County",
+    y = "Use of Force per 100,000 Residents"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.y = element_blank()
+  )
+```
+
+# Data Table
+
+## Row
+
+```{r}
+#| title: "County-Level Summary"
+force_by_diversity_df |>
+  arrange(desc(Force_Per_100k)) |>
+  select(County, TotPop10, E10, Use_Force, Force_Per_100k) |>
+  rename(
+    "Population (2010)" = TotPop10,
+    "Diversity Index" = E10,
+    "Uses of Force" = Use_Force,
+    "Force per 100k" = Force_Per_100k
+  ) |>
+  mutate(
+    "Population (2010)" = scales::comma(`Population (2010)`),
+    "Diversity Index" = round(`Diversity Index`, 3),
+    "Force per 100k" = round(`Force per 100k`, 1)
+  ) |>
+  knitr::kable()
+```
+
+# Research Questions
+
+## Row
+
+**1.** Is there a relationship between a county's diversity index and its rate of police use of force per 100,000 residents?
+
+**2.** Which racial/ethnic population proportions are most strongly associated with elevated use-of-force rates across Washington State counties?
+
+**3.** Do counties with higher call-for-service volumes show proportionally higher use-of-force incidents, or do some counties apply force disproportionately relative to call volume?
