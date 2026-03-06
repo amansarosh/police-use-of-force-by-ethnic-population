@@ -98,6 +98,24 @@ force_by_diversity_df |>
   )
 ```
 
+# Scatter Plot
+
+## Row
+
+```{r}
+#| title: "Diversity Index vs. Use of Force per 100k Residents"
+force_by_diversity_df |>
+  ggplot(aes(x = E10, y = Force_Per_100k)) +
+  geom_point(color = "#2980b9", size = 3, alpha = 0.7) +
+  geom_text(aes(label = County), size = 2.8, nudge_y = 3, check_overlap = TRUE) +
+  geom_smooth(method = "lm", se = FALSE, color = "#c0392b") +
+  labs(
+    x = "Diversity Index",
+    y = "Use of Force per 100,000 Residents"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
 # Data Table
 
 ## Row
