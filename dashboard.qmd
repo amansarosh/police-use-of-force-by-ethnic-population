@@ -6,6 +6,124 @@ format:
     theme: cosmo
     embed-resources: true
 ---
+# 1.1:Topical Overview
+
+## Row
+
+**Big-Picture Research Questions**
+
+1.  How do demographic characteristics, such as a county's diversity, relate to patterns of police use of force across Washington State?
+
+2.  How are differences in racial and ethnic population composition across counties associated with variation in police use-of-force rates?
+
+3.  To what extent do policing activity levels (such as call-for-service volume) explain differences in use-of-force incidents between counties?
+
+------------------------------------------------------------------------
+
+**Background**
+
+Police use of force and its relationship to community demographics have been major topics of discussion in the United States. In Seattle, the police department was placed under federal oversight in 2012 after the U.S. Department of Justice found patterns of excessive force and practices that disproportionately affected minorities. This investigation was sparked following the 2010 shooting of John Williams, an indigenous woodcarver, raising questions of police accountability.
+
+According to the investigation, officers used force in a manner considered unconstitutional in **one out of every five** reported incidents. Since then, the Seattle Police Department has implemented reforms including new use-of-force policies, body cameras, and stronger accountability systems. A federal judge has since ended the consent decree after determining the department made significant improvements — however, the broader discussion around policing and community experience remains ongoing.
+
+ 📰 [New York Times: Seattle Police Conclude 13 Years of Federal Oversight](https://www.nytimes.com/2025/09/03/us/seattle-police-consent-decree.html)
+ 
+![Seattle Police](https://static01.nyt.com/images/2025/09/03/multimedia/03nat-seattle-police-khwf/03nat-seattle-police-khwf-superJumbo.jpg?quality=75&auto=webp)
+
+------------------------------------------------------------------------
+
+**Why This Analysis Matters**
+
+Throughout U.S. history, marginalized groups have consistently experienced disparate treatment within society. Analyzing patterns in police use of force, particularly in relation to county demographics and policing activity, helps reveal whether certain communities are experiencing policing differently and whether those differences appear in the data.
+
+------------------------------------------------------------------------
+
+**Ethics & Limitations**
+
+The datasets used rely on information **self-reported by police departments**. Accuracy depends on how consistently and honestly departments record incidents. Possible issues include:
+ -   Under reporting or misclassification of incidents
+ -   Inconsistent definitions of "use of force" across departments
+ -   Data that may not fully reflect real-world policing patterns
+
+While large-scale manipulation is unlikely, unintentional or intentional favorable reporting remains a possibility.
+
+------------------------------------------------------------------------
+
+
+# 1.2: Data Context
+
+## Row
+
+***WADEPS***
+
+**Washington Data Exchange for Public Safety (WADEPS)**
+
+🔗 [Data](https://wadeps.org/home/dashboard/) \| [About](https://wadeps.org/about-wadeps/)
+
+**Authors:** Washington Association of Sheriffs and Police Chiefs (WASPC)
+
+------------------------------------------------------------------------
+
+**Description**
+
+The WADEPS dataset records police use of force and calls for service submitted by law enforcement agencies across Washington State, specifically tracking how often force was used relative to the number of calls officers responded to. The data covers 47 agencies operating across multiple Washington counties during 2025–2026, meaning each row in the dataset represents a reported incident or call logged by one of those agencies during that time period. One of the main benefits of this dataset is the broad statewide coverage it provides, giving us a picture of policing activity across many different communities rather than just one city or department. That said, the data is entirely self-reported by police departments, which means differences in how agencies define or record a "use of force" incident could affect how consistent and comparable the numbers really are across counties.
+
+### Diversity & Disparities {width="50%"}
+
+**Diversity and Disparities Dataset — Brown University**
+
+🔗 [Data](https://s4.ad.brown.edu/projects/diversity/index.htm) \| [About](https://s4.ad.brown.edu/projects/diversity/DiversityPages2/Default.aspx)
+
+**Authors:** Barrett Lee, John Iceland, and Gregory Sharp **Organizations:** National Institutes of Health \| Russell Sage Foundation \| Brown University
+
+------------------------------------------------------------------------
+
+**Description**
+
+This dataset was put together by researchers at Brown University and tracks racial and ethnic diversity across U.S. communities using Census data from 1980, 1990, 2000, and 2010. It records population counts and percentage breakdowns for five racial and ethnic groups White, Black, Asian/Pacific Islander, Hispanic, and all other groups combined at the county, state, metro area, and census place level across the entire country. The dataset also includes an entropy index for each location, which is a single number summarizing how evenly the different racial groups are distributed in that community, and that index is one of the main variables we used in our analysis. A major benefit of this dataset is that it provides detailed long-term demographic trends that can be linked to social outcomes like policing patterns, though one shortcoming is that some smaller places, particularly in 1980 were excluded, which may slightly skew results toward larger and better-documented communities.
+
+
+# 1.3 Group Information
+
+## Row
+
+### Brandon Lay
+
+
+*Brandon Lay* *Sophomore*
+
+------------------------------------------------------------------------
+
+📧 [bndonlay@uw.edu]
+
+| **Career Aspirations** | Data Analyst / Scientist |
+| **Favorite Language**  | Python / SQL             |
+| **Fun Fact**           | Double-Jointed           |
+
+### Aman Sarosh 
+
+
+*Aman Sarosh* *Junior*
+
+------------------------------------------------------------------------
+
+📧 [asarosh@uw.edu]
+
+| **Career Aspirations** | CTO                          |
+| **Favorite Language**  | Python                       |
+| **Fun Fact**           | Loves to travel — by air!    |
+
+### Gabriel Aritchita
+
+*Gabriel Aritchita* *Junior*
+
+------------------------------------------------------------------------
+
+📧 [gabe1124@uw.edu]
+
+| **Career Aspirations** | IT                       |
+| **Favorite Language**  | Java                     |
+| **Fun Fact**           | Currently work in IT     |
 
 ```{r}
 #| message: false
@@ -19,8 +137,8 @@ library(knitr)
 library(tidyr)
 
 # Load data
-diversityindex_df <- read.csv("data_clean/Counties.csv", skip = 1)
-rate_of_force_data_df <- read.csv("data_clean/Rate_of_Force_Data_R_1771113615253.csv")
+diversityindex_df <- read.csv("Counties.csv", skip = 1)
+rate_of_force_data_df <- read.csv("Rate_of_Force_Data_R_1771113615253.csv")
 
 # Diversity data
 diversityindex_df <- diversityindex_df |>
@@ -42,9 +160,17 @@ force_by_diversity_df <- diversityindex_df |>
          POther10, E10, Calls_Service, Use_Force) |>
   mutate(Force_Per_100k = (Use_Force / TotPop10) * 100000) |>
   drop_na()
+
+#mutate to find the ratio of force per call
+force_by_diversity_df <- force_by_diversity_df |>
+  mutate(Force_Per_Call = Use_Force / Calls_Service)
+
+# correlation coefficient between diversity index and force rate
+cor_diversity_force <- cor(force_by_diversity_df$E10,
+                           force_by_diversity_df$Force_Per_100k)
 ```
 
-# Overview
+# Graphical Overview
 
 ## Row {height="25%"}
 
@@ -80,13 +206,14 @@ list(
 
 ## Row {height="75%"}
 
+
 ```{r}
 #| title: "Use of Force per 100k Residents by County"
 force_by_diversity_df |>
   arrange(desc(Force_Per_100k)) |>
   ggplot(aes(x = reorder(County, Force_Per_100k), y = Force_Per_100k, fill = Force_Per_100k)) +
   geom_col(show.legend = FALSE) +
-  scale_fill_gradient(low = "#7fbfff", high = "#c0392b") +
+  scale_fill_gradient(low = "blue", high = "red") +
   coord_flip() +
   labs(
     x = "County",
@@ -98,17 +225,24 @@ force_by_diversity_df |>
   )
 ```
 
-# Scatter Plot
+# Q1: Diversity & Force Rate (ScatterPlot)
 
 ## Row
+
+**Research Question 1:** 
+How do demographic characteristics, such as a county's diversity, relate to patterns of police use of force across Washington State Counties?
+
+
+**Description:**
+To explore this question, we plotted each county’s diversity index against its use of force rate per 100,000 residents, with a trend line to show the overall direction. The correlation coefficient we calculated using `cor()` came out to **`r round(cor_diversity_force, 3)`** which is pretty close to zero. This means there isn’t really a strong relationship between how diverse a county is and how often force is used there. Counties like Thurston and Adams still stand out as higher-force outliers no matter their diversity level, which suggests other factors are likely influencing those numbers.
 
 ```{r}
 #| title: "Diversity Index vs. Use of Force per 100k Residents"
 force_by_diversity_df |>
   ggplot(aes(x = E10, y = Force_Per_100k)) +
-  geom_point(color = "#2980b9", size = 3, alpha = 0.7) +
+  geom_point(color = "skyblue", size = 3, alpha = 0.7) +
   geom_text(aes(label = County), size = 2.8, nudge_y = 3, check_overlap = TRUE) +
-  geom_smooth(method = "lm", se = FALSE, color = "#c0392b") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
   labs(
     x = "Diversity Index",
     y = "Use of Force per 100,000 Residents"
@@ -116,9 +250,84 @@ force_by_diversity_df |>
   theme_minimal(base_size = 12)
 ```
 
-# Data Table
+# Q2: Racial Composition & Force (Data Table)
 
 ## Row
+
+**Research Question 2:** 
+How are differences in racial and ethnic population composition across counties associated with variation in police use-of-force rates?
+
+**Description:**
+Rather than looking at diversity as just one number, this chart breaks down the actual racial and ethnic makeup of each county. The counties are ordered from the highest use-of-force rate at the top to the lowest at the bottom, which makes it easier to visually compare them. What stands out is that counties like Adams and Yakima, which are near the top, have larger Hispanic population shares compared to many counties further down the list. Counties with lower force rates tend to have higher white population shares. This doesn’t mean racial composition is causing higher force rates, but it does suggest there may be more of a pattern here than what the diversity index alone showed.
+
+```{r}
+#| title: "Racial/Ethnic Composition by County (ordered by Force Rate)"
+
+force_by_diversity_df |>
+  arrange(desc(Force_Per_100k)) |>
+  mutate(County = factor(County, levels = rev(unique(County)))) |>
+  select(County, PWhite10, PBlack10, PHisp10, PAPI10, POther10) |>
+  pivot_longer(
+    cols = c(PWhite10, PBlack10, PHisp10, PAPI10, POther10),
+    names_to = "Race",
+    values_to = "Proportion"
+  ) |>
+  mutate(Race = case_when(
+    Race == "PWhite10" ~ "White",
+    Race == "PBlack10" ~ "Black",
+    Race == "PHisp10"  ~ "Hispanic",
+    Race == "PAPI10"   ~ "Asian/Pacific Islander",
+    Race == "POther10" ~ "Other"
+  )) |>
+  ggplot(aes(x = County, y = Proportion, fill = Race)) +
+  geom_col(position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "White"                  = "skyblue",
+    "Black"                  = "orange",
+    "Hispanic"               = "darkred",
+    "Asian/Pacific Islander" = "forestgreen",
+    "Other"                  = "violet"
+  )) +
+  labs(
+    x = "County (ordered by force rate, high to low)",
+    y = "Population Share",
+    fill = "Racial/Ethnic Group"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+# Q3: Policing Activity & Force
+
+## Row
+
+**Research Question 3:** 
+To what extent do policing activity levels (such as call-for-service volume) explain differences in use-of-force incidents between counties?
+
+**Description**
+
+For this question we wanted to see if counties that handle more calls for service also end up using force more often. To do this we used `mutate()` to create a new variable called `Force_Per_Call`, which divides the total uses of force by the total calls for service. This gives us a rate that accounts for how busy each department is. We then plotted total calls on the x-axis and the force-per-call rate on the y-axis, with each point colored by the county's force-per-100k rate for extra context. If call volume explained force rates, we would expect busier counties to appear higher on the chart. But that is not what we see. King County handles the most calls but has a low force-per-call rate, while smaller counties like Adams and Thurston have much higher rates even with fewer calls. This suggests that how busy a department is does not really explain how often force is used.
+
+## Row {height="60%"}
+
+```{r}
+#| title: "Calls for Service vs. Force Rate per Call by County"
+
+# Force_Per_Call variable created with mutate()
+force_by_diversity_df |>
+  ggplot(aes(x = Calls_Service, y = Force_Per_Call, color = Force_Per_100k)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_text(aes(label = County), size = 2.8, nudge_y = 0.0005, check_overlap = TRUE) +
+  scale_color_gradient(low = "lightblue", high = "red", name = "Force per 100k") +
+  scale_x_continuous(labels = scales::comma) +
+  labs(
+    x = "Total Calls for Service",
+    y = "Uses of Force per Call"
+  ) +
+  theme_minimal(base_size = 12)
+```
+## Row {height="40%"}
 
 ```{r}
 #| title: "County-Level Summary"
@@ -139,12 +348,88 @@ force_by_diversity_df |>
   knitr::kable()
 ```
 
-# Research Questions
+# Methods & Conclusion
 
 ## Row
 
-**1.** Is there a relationship between a county's diversity index and its rate of police use of force per 100,000 residents?
+### Methods Note {width=40%}
 
-**2.** Which racial/ethnic population proportions are most strongly associated with elevated use-of-force rates across Washington State counties?
+**A Note on Our Methods**
 
-**3.** Do counties with higher call-for-service volumes show proportionally higher use-of-force incidents, or do some counties apply force disproportionately relative to call volume?
+---
+
+**`Cor()`**
+
+A tool we used that wasn't covered to our knowledge in class was `cor()`. The function basically calculates the pearson correlation coefficient between two number variables, which tells us how strongly they are related. The scale ranges from -1 to 1 and we used it to look at the relationship between the diversity index and the force rate for question 1. We used this function because calculating correlation is not something that is easily produced with the tools offered in base R such as mutate and summarise without writing giant blocks of code.
+
+The way our group found out about `cor()` was through google which then led us to learning about it with W3Schools that explains how the function worked and how we could use it.
+
+---
+
+**`knitr::kable()`** 
+
+We used this function to render clean, readable tables in the dashboard format instead of just dumping raw data output directly onto the page. Since `knitr` was not heavily covered in class, some independent research was required to implement it, including applying color coding to the tables for better readability. 
+
+Similarly to the way we found cor(), we used W3Schools to figure out how to apply `kable()` to our code, which helped us understand how to pass a data frame through the function and get a properly formatted table as the output.
+
+---
+
+
+---
+
+**`drop_na()`**
+
+We believe we did cover this function in class but to be safe,`drop_na()` removes rows that contain missing values across any of the selected columns at once, as opposed to `is.na()` which only identifies null values without removing them. It allowed us to clean the joined dataset in a single step rather than writing separate `filter(!is.na(...))` calls for each column.
+
+We already knew of this function before hand whether through just our own research in the past or because it was mentioned during a lecture is hard to pinpoint, but we did use W3School for looking up how to apply it to our code.
+
+---
+
+---
+
+**`pivot_longer()`**
+
+A basic tool we used in question 2 was `pivot_longer()`, which changes data from a wide format into a long format. In our case, this meant going from each racial group having its own column to having each row represent one county and one racial group. We needed to do this because ggplot2 requires a single column for the fill aesthetic in a stacked bar chart, so without reshaping the data first there was no simple way to show all five racial groups on the same chart.
+
+Similar to drop_na() some of us within our group did know this function() previously but we came to the consensous that it wasn't taught in class and the information regarding `pivot_longer()` we did use was from W3Schools.
+
+---
+
+### Conclusion {width=60%}
+
+**Summary Takeaways**
+
+---
+
+**1. Diversity Index Alone Was a Weak Predictor**
+
+County diversity by itself did not show a strong relationship with police use of force rates. When comparing the diversity index to force per 100,000 residents, the pattern was weak overall suggesting that being more or less diverse does not automatically determine a county's use-of-force rate.
+
+That said, clear differences between counties still existed. **Thurston, Adams, and Yakima** stood out with some of the highest force rates, while **Spokane, Island, and Kitsap** were much lower. Demographic diversity matters *some*, but does not fully explain the variation on its own.
+
+---
+
+**2. Racial & Ethnic Composition Showed Slightly More Signal**
+
+Racial and ethnic composition appeared somewhat more useful than the single diversity index. Counties with **larger Hispanic populations** tended to align more often with higher force rates, while counties with **larger white populations** trended a bit lower. As we have previously mentioned before, this does not imply causation, but suggests a relationship worth exploring further.
+
+---
+
+**3. Policing Activity Levels Did Not Explain Everything**
+
+Call volume alone did not account for differences in force rates once population was considered. **King County** is a clear example  it had a high *total* number of force incidents, but its *rate per 100,000 residents* was much lower than places like Thurston or Adams. This shows that raw call volume does not fully explain use-of-force variation.
+
+---
+
+**Limitations & Bias**
+
+ ⚠️ Our analysis likely **underestimates** the true picture of use-of-force patterns across Washington State for several reasons:
+
+ - **Self-reported data** from WADEPS means underreporting or inconsistent standards may lower observed rates
+ - Only **25 of 39 counties** were included in the final joined dataset (reason previously mentioned)
+ - **2010 demographic data** was matched with recent policing data — populations have changed significantly since then
+
+**Future improvements** would include using newer demographic data, expanding county and agency coverage, and adding variables like crime rates, poverty levels, department size, and agency-level policies. Comparing use of force directly to calls for service, rather than only population would also give a cleaner picture of whether some counties are using force more often relative to their policing activity.
+
+
+
