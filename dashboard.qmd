@@ -26,7 +26,7 @@ Police use of force and its relationship to community demographics have been maj
 
 According to the investigation, officers used force in a manner considered unconstitutional in **one out of every five** reported incidents. Since then, the Seattle Police Department has implemented reforms including new use-of-force policies, body cameras, and stronger accountability systems. A federal judge has since ended the consent decree after determining the department made significant improvements — however, the broader discussion around policing and community experience remains ongoing.
 
- 📰 [New York Times: Seattle Police Conclude 13 Years of Federal Oversight](https://www.nytimes.com/2025/09/03/us/seattle-police-consent-decree.html)
+ [New York Times: Seattle Police Conclude 13 Years of Federal Oversight](https://www.nytimes.com/2025/09/03/us/seattle-police-consent-decree.html)
  
 ![Seattle Police](https://static01.nyt.com/images/2025/09/03/multimedia/03nat-seattle-police-khwf/03nat-seattle-police-khwf-superJumbo.jpg?quality=75&auto=webp)
 
@@ -58,7 +58,7 @@ While large-scale manipulation is unlikely, unintentional or intentional favorab
 
 **Washington Data Exchange for Public Safety (WADEPS)**
 
-🔗 [Data](https://wadeps.org/home/dashboard/) \| [About](https://wadeps.org/about-wadeps/)
+[Data](https://wadeps.org/home/dashboard/) \| [About](https://wadeps.org/about-wadeps/)
 
 **Authors:** Washington Association of Sheriffs and Police Chiefs (WASPC)
 
@@ -72,7 +72,7 @@ The WADEPS dataset records police use of force and calls for service submitted b
 
 **Diversity and Disparities Dataset — Brown University**
 
-🔗 [Data](https://s4.ad.brown.edu/projects/diversity/index.htm) \| [About](https://s4.ad.brown.edu/projects/diversity/DiversityPages2/Default.aspx)
+[Data](https://s4.ad.brown.edu/projects/diversity/index.htm) \| [About](https://s4.ad.brown.edu/projects/diversity/DiversityPages2/Default.aspx)
 
 **Authors:** Barrett Lee, John Iceland, and Gregory Sharp **Organizations:** National Institutes of Health \| Russell Sage Foundation \| Brown University
 
@@ -90,11 +90,11 @@ This dataset was put together by researchers at Brown University and tracks raci
 ### Brandon Lay
 
 
-*Brandon Lay* *Sophomore*
+*Brandon Lay* - *Sophomore*
 
 ------------------------------------------------------------------------
 
-📧 [bndonlay@uw.edu]
+[bndonlay@uw.edu](mailto:bndonlay@uw.edu)
 
 | **Career Aspirations** | Data Analyst / Scientist |
 | **Favorite Language**  | Python / SQL             |
@@ -103,23 +103,23 @@ This dataset was put together by researchers at Brown University and tracks raci
 ### Aman Sarosh 
 
 
-*Aman Sarosh* *Junior*
+*Aman Sarosh* - *Junior*
 
 ------------------------------------------------------------------------
 
-📧 [asarosh@uw.edu]
+[asarosh@uw.edu](mailto:asarosh@uw.edu)
 
 | **Career Aspirations** | CTO                          |
 | **Favorite Language**  | Python                       |
-| **Fun Fact**           | Loves to travel — by air!    |
+| **Fun Fact**           | Love to travel — by air!    |
 
 ### Gabriel Aritchita
 
-*Gabriel Aritchita* *Junior*
+*Gabriel Aritchita* - *Junior*
 
 ------------------------------------------------------------------------
 
-📧 [gabe1124@uw.edu]
+[gabe1124@uw.edu](mailto:gabe1124@uw.edu)
 
 | **Career Aspirations** | IT                       |
 | **Favorite Language**  | Java                     |
@@ -135,10 +135,11 @@ library(stringr)
 library(ggplot2)
 library(knitr)
 library(tidyr)
+library(plotly)
 
 # Load data
-diversityindex_df <- read.csv("Counties.csv", skip = 1)
-rate_of_force_data_df <- read.csv("Rate_of_Force_Data_R_1771113615253.csv")
+diversityindex_df <- read.csv("data_clean/Counties.csv", skip = 1)
+rate_of_force_data_df <- read.csv("data_clean/Rate_of_Force_Data_R_1771113615253.csv")
 
 # Diversity data
 diversityindex_df <- diversityindex_df |>
@@ -207,11 +208,18 @@ list(
 ## Row {height="75%"}
 
 
+## Row {height="75%"}
 ```{r}
 #| title: "Use of Force per 100k Residents by County"
-force_by_diversity_df |>
+
+p <- force_by_diversity_df |>
   arrange(desc(Force_Per_100k)) |>
-  ggplot(aes(x = reorder(County, Force_Per_100k), y = Force_Per_100k, fill = Force_Per_100k)) +
+  ggplot(aes(
+    x = reorder(County, Force_Per_100k),
+    y = Force_Per_100k,
+    fill = Force_Per_100k,
+    text = paste0(County, ": ", round(Force_Per_100k, 1))
+  )) +
   geom_col(show.legend = FALSE) +
   scale_fill_gradient(low = "blue", high = "red") +
   coord_flip() +
@@ -220,9 +228,9 @@ force_by_diversity_df |>
     y = "Use of Force per 100,000 Residents"
   ) +
   theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.major.y = element_blank()
-  )
+  theme(panel.grid.major.y = element_blank())
+
+ggplotly(p, tooltip = "text")
 ```
 
 # Q1: Diversity & Force Rate (ScatterPlot)
@@ -423,7 +431,7 @@ Call volume alone did not account for differences in force rates once population
 
 **Limitations & Bias**
 
- ⚠️ Our analysis likely **underestimates** the true picture of use-of-force patterns across Washington State for several reasons:
+ Our analysis likely **underestimates** the true picture of use-of-force patterns across Washington State for several reasons:
 
  - **Self-reported data** from WADEPS means underreporting or inconsistent standards may lower observed rates
  - Only **25 of 39 counties** were included in the final joined dataset (reason previously mentioned)
