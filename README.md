@@ -59,18 +59,6 @@ The findings are presented as an **interactive Quarto dashboard** covering three
 
 ---
 
-## Methods & Tools
-
-| Function         | Purpose                                                    |
-| ---------------- | ---------------------------------------------------------- |
-| `cor()`          | Pearson correlation between diversity index and force rate |
-| `pivot_longer()` | Reshape racial composition data for stacked bar chart      |
-| `drop_na()`      | Remove incomplete rows after joining datasets              |
-| `ggplotly()`     | Make bar chart interactive with hover tooltips             |
-| `knitr::kable()` | Render clean county-level summary table                    |
-
----
-
 ## Limitations
 
 - Data is **self-reported** by police departments — underreporting is possible
