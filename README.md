@@ -1,5 +1,8 @@
 # Police Use of Force and County Diversity in Washington State
 
+## Access the Project
+[github.io](https://amansarosh.github.io/police-use-of-force-by-ethnic-population/dashboard.html)
+
 ## Project Overview
 
 This project investigates the relationship between police use of force and demographic diversity across Washington State counties. By combining official police reporting data with U.S. Census demographic information, we examine whether patterns in law enforcement practices correlate with community racial composition and diversity levels — and whether those patterns hold up across multiple angles of analysis.
